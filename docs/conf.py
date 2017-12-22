@@ -43,7 +43,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'django-mptt'
-copyright = '2007 - 2013, Craig de Stigter, Jonathan Buchanan and others'
+copyright = '2007 - 2017, Craig de Stigter, Jonathan Buchanan and others'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -51,7 +51,7 @@ copyright = '2007 - 2013, Craig de Stigter, Jonathan Buchanan and others'
 #
 # The short X.Y version.
 version_tuple = __import__('mptt').VERSION
-version = ".".join([str(v) for v in version_tuple])
+version = ".".join(str(v) for v in version_tuple)
 
 # The full version, including alpha/beta/rc tags.
 release = version

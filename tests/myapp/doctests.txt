@@ -1,4 +1,5 @@
 >>> from datetime import date
+>>> from django.db import connection
 >>> from mptt.exceptions import InvalidMove
 >>> from myapp.models import Genre, Insert, MultiOrder, Node, OrderedInsertion, Tree, Person, Student
 
@@ -10,6 +11,16 @@
 ...                       getattr(n, opts.left_attr), getattr(n, opts.right_attr)) \
 ...                      for n in nodes]))
 
+>>> def reset_sequence(model):
+...     # This fixes test failures. For a strange reason, this snippet is
+...     # only necessary with PY3. Also, do not fail if the table does not
+...     # exist at all for some reason.
+...     try:
+...         connection.cursor().execute(
+...             'UPDATE sqlite_sequence SET seq=0 WHERE name=%s',
+...             [model._meta.db_table])
+...     except:
+...         pass
 
 # Creation ####################################################################
 # creation with a given ID
@@ -59,6 +70,14 @@
 (<Genre: Action RPG>, True, [])
 (<Genre: Tactical RPG>, False, [1, 0])
 
+>>> for i,s in tree_item_iterator(rpg.get_descendants()):
+...     print((i, s['new_level'], list(s['closed_levels'])))
+(<Genre: Action RPG>, True, [])
+(<Genre: Tactical RPG>, False, [1])
+
+>>> for i,s in tree_item_iterator(trpg.get_descendants()):
+...     print((i, s['new_level'], list(s['closed_levels'])))
+
 >>> for i,s in tree_item_iterator(Genre.objects.all(), ancestors=True):
 ...     print((i, s['new_level'], s['ancestors'], list(s['closed_levels'])))
 (<Genre: Action>, True, [], [])
@@ -82,138 +101,17 @@
 >>> [item.name for item in drilldown_tree_for_node(platformer_3d)]
 [u'Action', u'Platformer', u'3D Platformer']
 
-# Forms #######################################################################
->>> from mptt.forms import TreeNodeChoiceField, MoveNodeForm
-
->>> f = TreeNodeChoiceField(queryset=Genre.objects.all())
->>> print(f.widget.render("test", None))
-<select name="test">
-<option value="" selected="selected">---------</option>
-<option value="1"> Action</option>
-<option value="2">--- Platformer</option>
-<option value="3">------ 2D Platformer</option>
-<option value="4">------ 3D Platformer</option>
-<option value="5">------ 4D Platformer</option>
-<option value="6"> Role-playing Game</option>
-<option value="7">--- Action RPG</option>
-<option value="8">--- Tactical RPG</option>
-</select>
-
->>> f = TreeNodeChoiceField(queryset=Genre.objects.all(), required=False)
->>> print(f.widget.render("test", None))
-<select name="test">
-<option value="" selected="selected">---------</option>
-<option value="1"> Action</option>
-<option value="2">--- Platformer</option>
-<option value="3">------ 2D Platformer</option>
-<option value="4">------ 3D Platformer</option>
-<option value="5">------ 4D Platformer</option>
-<option value="6"> Role-playing Game</option>
-<option value="7">--- Action RPG</option>
-<option value="8">--- Tactical RPG</option>
-</select>
-
->>> f = TreeNodeChoiceField(queryset=Genre.objects.all(), empty_label=u'None of the below')
->>> print(f.widget.render("test", None))
-<select name="test">
-<option value="" selected="selected">None of the below</option>
-<option value="1"> Action</option>
-<option value="2">--- Platformer</option>
-<option value="3">------ 2D Platformer</option>
-<option value="4">------ 3D Platformer</option>
-<option value="5">------ 4D Platformer</option>
-<option value="6"> Role-playing Game</option>
-<option value="7">--- Action RPG</option>
-<option value="8">--- Tactical RPG</option>
-</select>
-
->>> f = TreeNodeChoiceField(queryset=Genre.objects.all(), required=False, empty_label=u'None of the below')
->>> print(f.widget.render("test", None))
-<select name="test">
-<option value="" selected="selected">None of the below</option>
-<option value="1"> Action</option>
-<option value="2">--- Platformer</option>
-<option value="3">------ 2D Platformer</option>
-<option value="4">------ 3D Platformer</option>
-<option value="5">------ 4D Platformer</option>
-<option value="6"> Role-playing Game</option>
-<option value="7">--- Action RPG</option>
-<option value="8">--- Tactical RPG</option>
-</select>
-
->>> f = TreeNodeChoiceField(queryset=Genre.objects.all(), level_indicator=u'+--')
->>> print(f.widget.render("test", None))
-<select name="test">
-<option value="" selected="selected">---------</option>
-<option value="1"> Action</option>
-<option value="2">+-- Platformer</option>
-<option value="3">+--+-- 2D Platformer</option>
-<option value="4">+--+-- 3D Platformer</option>
-<option value="5">+--+-- 4D Platformer</option>
-<option value="6"> Role-playing Game</option>
-<option value="7">+-- Action RPG</option>
-<option value="8">+-- Tactical RPG</option>
-</select>
-
->>> form = MoveNodeForm(Genre.objects.get(pk=7))
->>> print(form['target'])
-<select id="id_target" name="target" size="10">
-<option value="" selected="selected">---------</option>
-<option value="1"> Action</option>
-<option value="2">--- Platformer</option>
-<option value="3">------ 2D Platformer</option>
-<option value="4">------ 3D Platformer</option>
-<option value="5">------ 4D Platformer</option>
-<option value="6"> Role-playing Game</option>
-<option value="8">--- Tactical RPG</option>
-</select>
-
->>> form = MoveNodeForm(Genre.objects.get(pk=7), level_indicator=u'+--', target_select_size=5)
->>> print(form['target'])
-<select id="id_target" name="target" size="5">
-<option value="" selected="selected">---------</option>
-<option value="1"> Action</option>
-<option value="2">+-- Platformer</option>
-<option value="3">+--+-- 2D Platformer</option>
-<option value="4">+--+-- 3D Platformer</option>
-<option value="5">+--+-- 4D Platformer</option>
-<option value="6"> Role-playing Game</option>
-<option value="8">+-- Tactical RPG</option>
-</select>
-
 # TreeManager Methods #########################################################
-# check that tree manager is the explicitly defined tree manager for Person
->>> Person._tree_manager == Person.my_tree_manager
-True
-
-# managers of non-abstract bases don't get inherited, so:
->>> Student._tree_manager == Student.my_tree_manager
-False
-
->>> Student._tree_manager == Person._tree_manager
-False
-
->>> Student._tree_manager.model
-<class 'myapp.models.Student'>
->>> Student._tree_manager.tree_model
-<class 'myapp.models.Person'>
->>> Person._tree_manager.model
-<class 'myapp.models.Person'>
->>> Person._tree_manager.tree_model
-<class 'myapp.models.Person'>
 
 >>> Genre.objects.root_node(action.tree_id)
 <Genre: Action>
 >>> Genre.objects.root_node(rpg.tree_id)
 <Genre: Role-playing Game>
 
-# django 1.4 and 1.5 have different msgs on this exception, so we can't use the normal doctest approach
->>> try:
-...     Genre.objects.root_node(3)
-... except Genre.DoesNotExist:
-...     pass
-... else:
-...     raise
+>>> Genre.objects.root_node(3)
+Traceback (most recent call last):
+...
+DoesNotExist: Genre matching query does not exist.
 
 >>> [g.name for g in Genre.objects.root_nodes()]
 [u'Action', u'Role-playing Game']
@@ -1237,7 +1135,8 @@ ValueError: Cannot insert a node which has already been saved.
 
 # reordering after save, original insertion in order ##########################
 # sibling root nodes, inserted B,C, moved C-->A
->>> OrderedInsertion.objects.all().delete()
+>>> _ = OrderedInsertion.objects.all().delete()
+>>> reset_sequence(OrderedInsertion)
 >>> b = OrderedInsertion.objects.create(name='b')
 >>> c = OrderedInsertion.objects.create(name='c')
 >>> c.name = 'a'
@@ -1247,7 +1146,8 @@ ValueError: Cannot insert a node which has already been saved.
 1 - 2 0 1 2
 
 # sibling non-root nodes, inserted B,C, moved C-->A
->>> OrderedInsertion.objects.all().delete()
+>>> _ = OrderedInsertion.objects.all().delete()
+>>> reset_sequence(OrderedInsertion)
 >>> root = OrderedInsertion.objects.create(name='root')
 >>> b = OrderedInsertion.objects.create(name='b', parent=root)
 >>> c = OrderedInsertion.objects.create(name='c', parent=root)
@@ -1259,7 +1159,8 @@ ValueError: Cannot insert a node which has already been saved.
 2 1 1 1 4 5
 
 # sibling root nodes, inserted A,B, moved A-->C
->>> OrderedInsertion.objects.all().delete()
+>>> _ = OrderedInsertion.objects.all().delete()
+>>> reset_sequence(OrderedInsertion)
 >>> a = OrderedInsertion.objects.create(name='a')
 >>> b = OrderedInsertion.objects.create(name='b')
 >>> a = OrderedInsertion.objects.get(name='a')
@@ -1270,7 +1171,8 @@ ValueError: Cannot insert a node which has already been saved.
 1 - 2 0 1 2
 
 # sibling non-root nodes, inserted A,B, moved A-->C
->>> OrderedInsertion.objects.all().delete()
+>>> _ = OrderedInsertion.objects.all().delete()
+>>> reset_sequence(OrderedInsertion)
 >>> root = OrderedInsertion.objects.create(name='root')
 >>> a = OrderedInsertion.objects.create(name='a', parent=root)
 >>> b = OrderedInsertion.objects.create(name='b', parent=root)
@@ -1285,7 +1187,8 @@ ValueError: Cannot insert a node which has already been saved.
 
 # reordering after save, original insertion in reverse ########################
 # sibling root nodes, inserted C,B, moved C-->A
->>> OrderedInsertion.objects.all().delete()
+>>> _ = OrderedInsertion.objects.all().delete()
+>>> reset_sequence(OrderedInsertion)
 >>> c = OrderedInsertion.objects.create(name='c')
 >>> b = OrderedInsertion.objects.create(name='b')
 >>> c = OrderedInsertion.objects.get(name='c')
@@ -1296,7 +1199,8 @@ ValueError: Cannot insert a node which has already been saved.
 2 - 2 0 1 2
 
 # sibling non-root nodes, inserted C,B, moved C-->A
->>> OrderedInsertion.objects.all().delete()
+>>> _ = OrderedInsertion.objects.all().delete()
+>>> reset_sequence(OrderedInsertion)
 >>> root = OrderedInsertion.objects.create(name='root')
 >>> c = OrderedInsertion.objects.create(name='c', parent=root)
 >>> b = OrderedInsertion.objects.create(name='b', parent=root)
@@ -1309,7 +1213,8 @@ ValueError: Cannot insert a node which has already been saved.
 3 1 1 1 4 5
 
 # sibling root nodes, inserted B,A, moved A-->C
->>> OrderedInsertion.objects.all().delete()
+>>> _ = OrderedInsertion.objects.all().delete()
+>>> reset_sequence(OrderedInsertion)
 >>> b = OrderedInsertion.objects.create(name='b')
 >>> a = OrderedInsertion.objects.create(name='a')
 >>> a.name = 'c'
@@ -1319,7 +1224,8 @@ ValueError: Cannot insert a node which has already been saved.
 2 - 2 0 1 2
 
 # sibling non-root nodes, inserted B,A, moved A-->C
->>> OrderedInsertion.objects.all().delete()
+>>> _ = OrderedInsertion.objects.all().delete()
+>>> reset_sequence(OrderedInsertion)
 >>> root = OrderedInsertion.objects.create(name='root')
 >>> b = OrderedInsertion.objects.create(name='b', parent=root)
 >>> a = OrderedInsertion.objects.create(name='a', parent=root)
@@ -1333,7 +1239,8 @@ ValueError: Cannot insert a node which has already been saved.
 
 # reordering after save, when only a single instance at level exists ##########
 # root node with no siblings no children, inserted B, moved B-->A (forward)
->>> OrderedInsertion.objects.all().delete()
+>>> _ = OrderedInsertion.objects.all().delete()
+>>> reset_sequence(OrderedInsertion)
 >>> b = OrderedInsertion.objects.create(name='b')
 >>> b = OrderedInsertion.objects.get(name='b')
 >>> b.name = 'a'
@@ -1342,7 +1249,8 @@ ValueError: Cannot insert a node which has already been saved.
 1 - 1 0 1 2
 
 # root node with no siblings with children, inserted B,child, moved B-->A (forward)
->>> OrderedInsertion.objects.all().delete()
+>>> _ = OrderedInsertion.objects.all().delete()
+>>> reset_sequence(OrderedInsertion)
 >>> b = OrderedInsertion.objects.create(name='b')
 >>> child = OrderedInsertion.objects.create(name='child', parent=b)
 >>> b = OrderedInsertion.objects.get(name='b')
@@ -1353,7 +1261,8 @@ ValueError: Cannot insert a node which has already been saved.
 2 1 1 1 2 3
 
 # parented node with no siblings no children, inserted root,B, moved B-->A (forward)
->>> OrderedInsertion.objects.all().delete()
+>>> _ = OrderedInsertion.objects.all().delete()
+>>> reset_sequence(OrderedInsertion)
 >>> root = OrderedInsertion.objects.create(name='root')
 >>> b = OrderedInsertion.objects.create(name='b', parent=root)
 >>> b = OrderedInsertion.objects.get(name='b')
@@ -1364,7 +1273,8 @@ ValueError: Cannot insert a node which has already been saved.
 2 1 1 1 2 3
 
 # parented node with no siblings with children, inserted root,B,C, moved B-->A (forward)
->>> OrderedInsertion.objects.all().delete()
+>>> _ = OrderedInsertion.objects.all().delete()
+>>> reset_sequence(OrderedInsertion)
 >>> root = OrderedInsertion.objects.create(name='root')
 >>> b = OrderedInsertion.objects.create(name='b', parent=root)
 >>> c = OrderedInsertion.objects.create(name='c', parent=b)
@@ -1377,7 +1287,8 @@ ValueError: Cannot insert a node which has already been saved.
 3 2 1 2 3 4
 
 # root node with no siblings no children, inserted B, moved B-->C (backward)
->>> OrderedInsertion.objects.all().delete()
+>>> _ = OrderedInsertion.objects.all().delete()
+>>> reset_sequence(OrderedInsertion)
 >>> b = OrderedInsertion.objects.create(name='b')
 >>> b = OrderedInsertion.objects.get(name='b')
 >>> b.name = 'c'
@@ -1386,7 +1297,8 @@ ValueError: Cannot insert a node which has already been saved.
 1 - 1 0 1 2
 
 # root node with no siblings with children, inserted B,child, moved B-->C (backward)
->>> OrderedInsertion.objects.all().delete()
+>>> _ = OrderedInsertion.objects.all().delete()
+>>> reset_sequence(OrderedInsertion)
 >>> b = OrderedInsertion.objects.create(name='b')
 >>> child = OrderedInsertion.objects.create(name='child', parent=b)
 >>> b = OrderedInsertion.objects.get(name='b')
@@ -1397,7 +1309,8 @@ ValueError: Cannot insert a node which has already been saved.
 2 1 1 1 2 3
 
 # parented node with no siblings no children, inserted root,B, moved B-->C (backward)
->>> OrderedInsertion.objects.all().delete()
+>>> _ = OrderedInsertion.objects.all().delete()
+>>> reset_sequence(OrderedInsertion)
 >>> root = OrderedInsertion.objects.create(name='root')
 >>> b = OrderedInsertion.objects.create(name='b', parent=root)
 >>> b = OrderedInsertion.objects.get(name='b')
@@ -1408,7 +1321,8 @@ ValueError: Cannot insert a node which has already been saved.
 2 1 1 1 2 3
 
 # parented node with no siblings with children, inserted root,B,D, moved B-->C (backward)
->>> OrderedInsertion.objects.all().delete()
+>>> _ = OrderedInsertion.objects.all().delete()
+>>> reset_sequence(OrderedInsertion)
 >>> root = OrderedInsertion.objects.create(name='root')
 >>> b = OrderedInsertion.objects.create(name='b', parent=root)
 >>> d = OrderedInsertion.objects.create(name='d', parent=b)
@@ -1420,7 +1334,8 @@ ValueError: Cannot insert a node which has already been saved.
 2 1 1 1 2 5
 3 2 1 2 3 4
 
->>> OrderedInsertion.objects.all().delete()
+>>> _ = OrderedInsertion.objects.all().delete()
+>>> reset_sequence(OrderedInsertion)
 >>> root = OrderedInsertion.objects.create(name='root')
 >>> r1 = OrderedInsertion.objects.create(name='r1', parent=root)
 >>> r2 = OrderedInsertion.objects.create(name='r2', parent=root)
@@ -1512,7 +1427,7 @@ ValueError: Cannot insert a node which has already been saved.
 >>> jane = Student.objects.create(name='Jane', parent=jeff)
 >>> joe = Person.objects.create(name='Joe', parent=jane)
 >>> julie = Student.objects.create(name='Julie', parent=jess)
->>> print_tree_details(Person.my_tree_manager.all())
+>>> print_tree_details(Person.objects.all())
 1 - 1 0 1 6
 2 1 1 1 2 3
 3 1 1 1 4 5
@@ -1529,7 +1444,7 @@ ValueError: Cannot insert a node which has already been saved.
 8 4 2 1 8 9
 
 >>> jack = Person.objects.get(pk=1)
->>> jack.get_descendants()
+>>> list(jack.get_descendants())
 [<Person: Jill>, <Person: Jim>]
 >>> jack.get_root()
 <Person: Jack>
@@ -1537,18 +1452,18 @@ ValueError: Cannot insert a node which has already been saved.
 >>> jill.get_root()
 <Person: Jack>
 >>> jess = Student.objects.get(pk=4)
->>> jess.get_descendants()
+>>> list(jess.get_descendants())
 [<Person: Jeff>, <Person: Jane>, <Person: Joe>, <Person: Julie>]
 >>> jess.get_root()
 <Person: Jess>
 >>> jeff = Person.objects.get(pk=5)
->>> jeff.get_descendants()
+>>> list(jeff.get_descendants())
 [<Person: Jane>, <Person: Joe>]
 >>> jeff.get_root()
 <Person: Jess>
 >>> jane = Student.objects.get(pk=6)
 >>> jane.get_root()
 <Person: Jess>
->>> jane.get_ancestors()
+>>> list(jane.get_ancestors())
 [<Person: Jess>, <Person: Jeff>]
 

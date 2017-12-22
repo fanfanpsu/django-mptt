@@ -2,6 +2,75 @@
 Upgrade notes
 =============
 
+0.9.0
+=====
+
+Now supports django 1.11 and 2.0.
+
+Removed tests for unsupported django versions (django 1.9, 1.10)
+
+0.8.6
+=====
+
+Now supports django 1.10. After upgrading, you may come across this error when running migrations::
+
+    Unhandled exception in thread started by <function wrapper at 0x7f32e681faa0>
+    Traceback (most recent call last):
+      #...
+      File "venv/lib/python2.7/site-packages/django/db/models/manager.py", line 120, in contribute_to_class
+        setattr(model, name, ManagerDescriptor(self))
+    AttributeError: can't set attribute
+
+To fix this, please replace ``._default_manager`` in your historic migrations with ``.objects``. For more detailed information see `#469`_, `#498`_
+
+.. _`#469`: https://github.com/django-mptt/django-mptt/issues/469
+.. _`#498`: https://github.com/django-mptt/django-mptt/issues/498
+
+0.8.0
+=====
+
+Dropped support for old Django versions and Python 2.6
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Unsupported versions of django (1.4, 1.5, 1.6, 1.7) are no longer supported, and Python 2.6 is no longer supported.
+
+These versions of python/django no longer receive security patches. You should upgrade to Python 2.7 and Django 1.8+.
+
+Django 1.9 support has been added.
+
+0.7.0
+=====
+
+Dropped support for Django 1.5, Added support for 1.8
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Django 1.5 support has been removed since django 1.5 is not supported upstream any longer.
+
+Django 1.8 support has been added.
+
+Deprecated: Calling ``recursetree``/``cache_tree_children`` with incorrectly-ordered querysets
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Previously, when given a queryset argument, ``cache_tree_children`` called ``.order_by`` to ensure that the queryset
+was in the correct order. In 0.7, calling ``cache_tree_children`` with an incorrectly-ordered queryset will cause a deprecation warning. In 0.8, it will raise an error.
+
+This also applies to ``recursetree``, since it calls ``cache_tree_children``.
+
+This probably doesn't affect many usages, since the default ordering for mptt models will work fine.
+
+Minor: ``TreeManager.get_queryset`` no longer provided on Django < 1.6
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Django renamed ``get_query_set`` to ``get_queryset`` in Django 1.6. For backward compatibility django-mptt had both methods
+available for 1.4-1.5 users.
+
+This has been removed. You should use ``get_query_set`` on Django 1.4-1.5, and ``get_queryset`` if you're on 1.6+.
+
+Removed FeinCMSModelAdmin
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Deprecated in 0.6.0, this has now been removed.
+
 0.6.0
 =====
 
@@ -26,7 +95,7 @@ otherwise you will start seeing new '--------' choices appearing in them.
 Deprecated FeinCMSModelAdmin
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you were using ``mptt.admin.FeinCMSModelAdmin``, you should switch to using 
+If you were using ``mptt.admin.FeinCMSModelAdmin``, you should switch to using
 ``feincms.admin.tree_editor.TreeEditor`` instead, or you'll get a loud deprecation warning.
 
 0.4.2 to 0.5.5
@@ -110,14 +179,14 @@ Suppose you start with this::
 
     class Node(models.Model):
         ...
-    
+
     mptt.register(Node, order_insertion_by=['name'], parent_attr='padre')
 
 
 First, Make your model a subclass of ``MPTTModel``, instead of ``models.Model``::
 
     from mptt.models import MPTTModel
-    
+
     class Node(MPTTModel):
         ...
 
@@ -155,12 +224,12 @@ You should always put MPTTModel as the first model base. This is because there's
 complicated metaclass stuff going on behind the scenes, and if Django's model metaclass
 gets called before the MPTT one, strange things can happen.
 
-Isn't multiple inheritance evil? Well, maybe. However, the 
+Isn't multiple inheritance evil? Well, maybe. However, the
 `Django model docs`_ don't forbid this, and as long as your other model doesn't have conflicting methods, it should be fine.
 
 .. note::
    As always when dealing with multiple inheritance, approach with a bit of caution.
-   
+
    Our brief testing says it works, but if you find that the Django internals are somehow
    breaking this approach for you, please `create an issue`_ with specifics.
 

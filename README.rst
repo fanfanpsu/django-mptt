@@ -6,10 +6,12 @@ Utilities for implementing Modified Preorder Tree Traversal with your
 Django Models and working with trees of Model instances.
 
 .. image:: https://secure.travis-ci.org/django-mptt/django-mptt.png?branch=master
+    :alt: Build Status
+    :target: https://travis-ci.org/django-mptt/django-mptt
 
 Project home: http://github.com/django-mptt/django-mptt/
 
-Documentation: http://django-mptt.github.io/django-mptt/
+Documentation: https://django-mptt.readthedocs.io/
 
 Discussion group: http://groups.google.com/group/django-mptt-dev
 
@@ -26,19 +28,18 @@ required to keep the tree structure in a good state at all times.
 Here are a few articles about MPTT to whet your appetite and provide
 details about how the technique itself works:
 
-    * `Trees in SQL`_
-    * `Storing Hierarchical Data in a Database`_
-    * `Managing Hierarchical Data in MySQL`_
+* `Trees in SQL`_
+* `Storing Hierarchical Data in a Database`_
+* `Managing Hierarchical Data in MySQL`_
 
-.. _`Trees in SQL`: http://www.ibase.ru/devinfo/DBMSTrees/sqltrees.html
+.. _`Trees in SQL`: http://www.ibase.ru/files/articles/programming/dbmstrees/sqltrees.html
 .. _`Storing Hierarchical Data in a Database`: http://www.sitepoint.com/print/hierarchical-data-database
-.. _`Managing Hierarchical Data in MySQL`: http://mirror.neu.edu.cn/mysql/tech-resources/articles/hierarchical-data.html
-
+.. _`Managing Hierarchical Data in MySQL`: http://mikehillyer.com/articles/managing-hierarchical-data-in-mysql/
 
 What is ``django-mptt``?
 ========================
 
-``django-mptt`` is a reusable Django app which aims to make it easy for you 
+``django-mptt`` is a reusable Django app which aims to make it easy for you
 to use MPTT with your own Django models.
 
 It takes care of the details of managing a database table as a tree
@@ -47,8 +48,8 @@ structure and provides tools for working with trees of model instances.
 Requirements
 ------------
 
-* Python 2.6+ (with experimental support for python 3.2+)
-* Django 1.4.2+
+* Python 2.7 or 3.3+
+* A supported version of Django (currently 1.8+)
 
 Feature overview
 ----------------
@@ -71,14 +72,22 @@ Feature overview
 
 * A ``TreeManager`` manager is added to all registered models. This provides
   methods to:
-  
+
   * move nodes around a tree, or into a different tree
   * insert a node anywhere in a tree
   * rebuild the MPTT fields for the tree (useful when you do bulk updates
     outside of django)
 
-* Form fields for tree models.
+* `Form fields`_ for tree models.
 
-* Utility functions for tree models.
+* `Utility functions`_ for tree models.
 
-* Template tags and filters for rendering trees.
+* `Template tags and filters`_ for rendering trees.
+
+* `Admin classes`_ for visualizing and modifying trees in Django's administration
+  interface.
+
+.. _`Form fields`: https://django-mptt.readthedocs.io/en/latest/forms.html
+.. _`Utility functions`: https://django-mptt.readthedocs.io/en/latest/utilities.html
+.. _`Template tags and filters`: https://django-mptt.readthedocs.io/en/latest/templates.html
+.. _`Admin classes`: https://django-mptt.readthedocs.io/en/latest/admin.html
